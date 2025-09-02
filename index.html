@@ -1,345 +1,83 @@
 <!doctype html>
 <html lang="fr">
 <head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>NFL Fantasy Tracker</title>
-  <script src="https://cdn.tailwindcss.com"></script>
-  <meta name="description" content="Suivre les matchs NFL par semaine et surligner ceux où tu as des joueurs de fantasy." />
-  <meta name="theme-color" content="#0f172a" />
-  <style>
-    :root { color-scheme: light dark; }
-    .scrollbar-thin { scrollbar-width: thin; }
-  </style>
-  <script type="importmap">
-    {"imports": {"react": "https://esm.sh/react@18","react-dom/client": "https://esm.sh/react-dom@18/client"}}
-  </script>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>NFL Fantasy Tracker</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<meta name="description" content="Suivre les matchs NFL par semaine et surligner ceux où tu as des joueurs de fantasy." />
+<meta name="theme-color" content="#0f172a" />
+<style>
+:root { color-scheme: light dark; }
+.scrollbar-thin { scrollbar-width: thin; }
+</style>
+<script type="importmap">
+{"imports": {"react": "https://esm.sh/react@18","react-dom/client": "https://esm.sh/react-dom@18/client"}}
+</script>
 </head>
 <body class="bg-slate-50 text-slate-900 dark:bg-slate-950 dark:text-slate-100">
-  <main class="max-w-6xl mx-auto p-4 sm:p-6">
-    <header class="mb-6 flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
-      <div>
-        <h1 class="text-2xl sm:text-3xl font-bold tracking-tight">🏈 NFL Fantasy Tracker</h1>
-        <p class="text-sm sm:text-base text-slate-600 dark:text-slate-300 mt-1">Sélectionne une semaine, vois tous les matchs et, sous chaque équipe, tes joueurs à suivre.</p>
-      </div>
-      <div class="flex gap-2 flex-wrap">
-        <label class="text-sm flex items-center gap-2">Week
-          <select id="weekSelect" class="bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-700 rounded-lg px-3 py-2 text-sm"></select>
-        </label>
-        <button id="btnImport" class="px-3 py-2 rounded-lg border border-slate-300 dark:border-slate-700 text-sm">Importer calendrier</button>
-        <button id="btnExport" class="px-3 py-2 rounded-lg border border-slate-300 dark:border-slate-700 text-sm">Exporter calendrier</button>
-      </div>
-    </header>
+<main class="max-w-6xl mx-auto p-4 sm:p-6">
+<header class="mb-6 flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
+<div>
+<h1 class="text-2xl sm:text-3xl font-bold tracking-tight">🏈 NFL Fantasy Tracker</h1>
+<p class="text-sm sm:text-base text-slate-600 dark:text-slate-300 mt-1">Sélectionne une semaine, vois tous les matchs et, sous chaque équipe, tes joueurs à suivre.</p>
+</div>
+<div class="flex gap-2 flex-wrap">
+<label class="text-sm flex items-center gap-2">Week
+<select id="weekSelect" class="bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-700 rounded-lg px-3 py-2 text-sm"></select>
+</label>
+</div>
+</header>
 
-    <section class="mb-4 text-xs text-slate-500">
-      Astuce : clique sur « Importer calendrier » pour charger un JSON <code>[{week, date, time, away, home}]</code> (codes équipes NFL ou noms). Tout est stocké en local (LocalStorage).
-    </section>
 
-    <div id="matches" class="grid gap-4"></div>
+<div id="matches" class="grid gap-4"></div>
 
-    <footer class="mt-10 text-xs text-slate-500">Fichier unique prêt pour GitHub Pages. Logos vectoriels générés à la volée aux couleurs officielles, sans dépendance externe.</footer>
-  </main>
 
-  <script type="module">
-    import React, { useEffect, useMemo, useState } from 'react';
-    import { createRoot } from 'react-dom/client';
+<footer class="mt-10 text-xs text-slate-500">Fichier unique prêt pour GitHub Pages. Les données sont chargées depuis <code>schedule.json</code> et <code>players.json</code>.</footer>
+</main>
 
-    const STORAGE_KEY = 'nfl_fantasy_tracker_v1';
 
-    // --- Équipes, couleurs, alias ---
-    const TEAMS = {
-      ARI: {name:'Arizona Cardinals', primary:'#97233F', secondary:'#FFB612'},
-      ATL: {name:'Atlanta Falcons', primary:'#A71930', secondary:'#000000'},
-      BAL: {name:'Baltimore Ravens', primary:'#241773', secondary:'#9E7C0C'},
-      BUF: {name:'Buffalo Bills', primary:'#00338D', secondary:'#C60C30'},
-      CAR: {name:'Carolina Panthers', primary:'#0085CA', secondary:'#101820'},
-      CHI: {name:'Chicago Bears', primary:'#0B162A', secondary:'#C83803'},
-      CIN: {name:'Cincinnati Bengals', primary:'#FB4F14', secondary:'#000000'},
-      CLE: {name:'Cleveland Browns', primary:'#311D00', secondary:'#FF3C00'},
-      DAL: {name:'Dallas Cowboys', primary:'#041E42', secondary:'#869397'},
-      DEN: {name:'Denver Broncos', primary:'#FB4F14', secondary:'#002244'},
-      DET: {name:'Detroit Lions', primary:'#0076B6', secondary:'#B0B7BC'},
-      GB:  {name:'Green Bay Packers', primary:'#203731', secondary:'#FFB612'},
-      HOU: {name:'Houston Texans', primary:'#03202F', secondary:'#A71930'},
-      IND: {name:'Indianapolis Colts', primary:'#002C5F', secondary:'#A2AAAD'},
-      JAX: {name:'Jacksonville Jaguars', primary:'#101820', secondary:'#D7A22A'},
-      KC:  {name:'Kansas City Chiefs', primary:'#E31837', secondary:'#FFB81C'},
-      LV:  {name:'Las Vegas Raiders', primary:'#000000', secondary:'#A5ACAF'},
-      LAC: {name:'Los Angeles Chargers', primary:'#0080C6', secondary:'#FFC20E'},
-      LAR: {name:'Los Angeles Rams', primary:'#003594', secondary:'#FFA300'},
-      MIA: {name:'Miami Dolphins', primary:'#008E97', secondary:'#FC4C02'},
-      MIN: {name:'Minnesota Vikings', primary:'#4F2683', secondary:'#FFC62F'},
-      NE:  {name:'New England Patriots', primary:'#002244', secondary:'#C60C30'},
-      NO:  {name:'New Orleans Saints', primary:'#101820', secondary:'#D3BC8D'},
-      NYG: {name:'New York Giants', primary:'#0B2265', secondary:'#A71930'},
-      NYJ: {name:'New York Jets', primary:'#125740', secondary:'#000000'},
-      PHI: {name:'Philadelphia Eagles', primary:'#004C54', secondary:'#A5ACAF'},
-      PIT: {name:'Pittsburgh Steelers', primary:'#101820', secondary:'#FFB612'},
-      SF:  {name:'San Francisco 49ers', primary:'#AA0000', secondary:'#B3995D'},
-      SEA: {name:'Seattle Seahawks', primary:'#002244', secondary:'#69BE28'},
-      TB:  {name:'Tampa Bay Buccaneers', primary:'#D50A0A', secondary:'#FF7900'},
-      TEN: {name:'Tennessee Titans', primary:'#0C2340', secondary:'#4B92DB'},
-      WAS: {name:'Washington Commanders', primary:'#5A1414', secondary:'#FFB612'}
-    };
+<script type="module">
+import React, { useEffect, useMemo, useState } from 'react';
+import { createRoot } from 'react-dom/client';
 
-    const TEAM_ALIASES = new Map([
-      ['washington commanders','WAS'], ['washington','WAS'], ['commanders','WAS'],
-      ['new york jets','NYJ'], ['jets','NYJ'],
-      ['new york giants','NYG'], ['giants','NYG'],
-      ['chicago bears','CHI'], ['bears','CHI'],
-      ['detroit lions','DET'], ['lions','DET'],
-      ['denver broncos','DEN'], ['broncos','DEN'],
-      ['kansas city chiefs','KC'], ['chiefs','KC'],
-      ['cleveland browns','CLE'], ['browns','CLE'],
-      ['buffalo bills','BUF'], ['bills','BUF'],
-      ['los angeles chargers','LAC'], ['chargers','LAC'],
-      ['minnesota vikings','MIN'], ['vikings','MIN'],
-      ['atlanta falcons','ATL'], ['falcons','ATL'],
-      ['tampa bay buccaneers','TB'], ['buccaneers','TB'], ['bucs','TB'],
-      ['baltimore ravens','BAL'], ['ravens','BAL'],
-      ['new orleans saints','NO'], ['saints','NO'],
-      ['houston texans','HOU'], ['texans','HOU'],
-      ['seattle seahawks','SEA'], ['seahawks','SEA'],
-      ['carolina panthers','CAR'], ['panthers','CAR'],
-      ['las vegas raiders','LV'], ['raiders','LV'],
-      ['arizona cardinals','ARI'], ['cardinals','ARI'],
-      ['pittsburgh steelers','PIT'], ['steelers','PIT'],
-      ['tennessee titans','TEN'], ['titans','TEN'],
-      ['new england patriots','NE'], ['patriots','NE'],
-      ['cincinnati bengals','CIN'], ['bengals','CIN'],
-      ['jacksonville jaguars','JAX'], ['jaguars','JAX']
-    ]);
 
-    const normalizeTeam = (t) => {
-      if (!t) return null;
-      const key = String(t).trim().toLowerCase();
-      if (TEAM_ALIASES.has(key)) return TEAM_ALIASES.get(key);
-      const code = key.toUpperCase();
-      if (TEAMS[code]) return code;
-      return null;
-    };
+const TEAMS = {
+ARI: {name:'Arizona Cardinals', primary:'#97233F'},
+ATL: {name:'Atlanta Falcons', primary:'#A71930'},
+BAL: {name:'Baltimore Ravens', primary:'#241773'},
+BUF: {name:'Buffalo Bills', primary:'#00338D'},
+CAR: {name:'Carolina Panthers', primary:'#0085CA'},
+CHI: {name:'Chicago Bears', primary:'#0B162A'},
+CIN: {name:'Cincinnati Bengals', primary:'#FB4F14'},
+CLE: {name:'Cleveland Browns', primary:'#311D00'},
+DAL: {name:'Dallas Cowboys', primary:'#041E42'},
+DEN: {name:'Denver Broncos', primary:'#FB4F14'},
+DET: {name:'Detroit Lions', primary:'#0076B6'},
+GB: {name:'Green Bay Packers', primary:'#203731'},
+HOU: {name:'Houston Texans', primary:'#03202F'},
+IND: {name:'Indianapolis Colts', primary:'#002C5F'},
+JAX: {name:'Jacksonville Jaguars', primary:'#101820'},
+KC: {name:'Kansas City Chiefs', primary:'#E31837'},
+LV: {name:'Las Vegas Raiders', primary:'#000000'},
+LAC: {name:'Los Angeles Chargers', primary:'#0080C6'},
+LAR: {name:'Los Angeles Rams', primary:'#003594'},
+MIA: {name:'Miami Dolphins', primary:'#008E97'},
+MIN: {name:'Minnesota Vikings', primary:'#4F2683'},
+NE: {name:'New England Patriots', primary:'#002244'},
+NO: {name:'New Orleans Saints', primary:'#101820'},
+NYG: {name:'New York Giants', primary:'#0B2265'},
+NYJ: {name:'New York Jets', primary:'#125740'},
+PHI: {name:'Philadelphia Eagles', primary:'#004C54'},
+PIT: {name:'Pittsburgh Steelers', primary:'#101820'},
+SF: {name:'San Francisco 49ers', primary:'#AA0000'},
+SEA: {name:'Seattle Seahawks', primary:'#002244'},
+TB: {name:'Tampa Bay Buccaneers', primary:'#D50A0A'},
+TEN: {name:'Tennessee Titans', primary:'#0C2340'},
+WAS: {name:'Washington Commanders', primary:'#5A1414'}
+};
 
-    // --- Tes joueurs (version utilisateur) ---
-    const USER_PLAYERS = {
-      WAS: ['Jayden Daniels','DEFENSE','Zach Ertz'],
-      NYJ: ['Breece Hall'],
-      CHI: ["D'Andre Swift"],
-      DET: ['Amon-Ra St Brown','DEFENSE','Jake Bates'],
-      DEN: ['Courtland Sutton','Audric Estime'],
-      KC:  ['Travis Kelce','Xavier Worthy'],
-      CLE: ['David Njoku','Jerry Jeudy'],
-      BUF: ['Khalil Shakir','Keon Coleman','Dalton Kincaid'],
-      LAC: ['Cameron Dicker','Kimani Vidal'],
-      MIN: ['JJ McCarthy','Adam Thielen','Aaron Jones'],
-      ATL: ['Tyler Allgeier'],
-      TB:  ['Rachaad White','Chris Godwin'],
-      BAL: ['Lamar Jackson','Mark Andrews','Rashod Bateman'],
-      NO:  ['Alvin Kamara'],
-      NYG: ['Tyrone Tracy','Cam Skattebo','Jaxson Dart','Jameis Winston'],
-      HOU: ['Nico Collins'],
-      SEA: ['Jaxon Smith-Njigba','Cooper Kupp'],
-      CAR: ['Xavier Legette','Bryce Young','Tetaoira McMillan'],
-      LV:  ["Dont'e Thornton",'Ashton Jeanty','Amari Cooper'],
-      ARI: ['Kyler Murray','Trey McBride'],
-      PIT: ['DK Metcalf'],
-      TEN: ['Tony Pollard'],
-      NE:  ['Rhamondre Stevenson'],
-      CIN: ['Joe Burrow'],
-      JAX: ['Brian Thomas']
-    };
 
-    // --- Stockage local du calendrier ---
-    function loadState(){
-      try{
-        const raw = localStorage.getItem(STORAGE_KEY);
-        if(!raw) return { games: [] };
-        const parsed = JSON.parse(raw);
-        return { games: Array.isArray(parsed.games)? parsed.games: [] };
-      }catch{ return { games: [] }; }
-    }
-    function saveState(state){ localStorage.setItem(STORAGE_KEY, JSON.stringify(state)); }
-
-    // --- Composants ---
-    const Helmet = ({code, size=28}) => {
-      const team = TEAMS[code] || {primary:'#666', secondary:'#999'};
-      const p = team.primary, s = team.secondary;
-      return (
-        <svg width={size} height={size} viewBox="0 0 64 64" aria-hidden>
-          <defs>
-            <linearGradient id={`g${code}`} x1="0" y1="0" x2="1" y2="1">
-              <stop offset="0%" stop-color={p}/>
-              <stop offset="100%" stop-color={s}/>
-            </linearGradient>
-          </defs>
-          <g>
-            <path d="M50 38c0 8-9 15-20 15S10 50 10 38 19 16 30 16s20 14 20 22z" fill={`url(#g${code})`} stroke="#000" stroke-opacity=".2"/>
-            <circle cx="18" cy="38" r="8" fill="#000" opacity=".15"/>
-          </g>
-        </svg>
-      );
-    };
-
-    const TeamLabel = ({code}) => {
-      const t = TEAMS[code];
-      if(!t) return <span class="font-semibold">{code}</span>;
-      return (
-        <span class="font-extrabold tracking-wide" style={{color:t.primary}}>
-          {t.name.split(' ').slice(-1)[0].toUpperCase()}
-        </span>
-      );
-    };
-
-    const MatchCard = ({game}) => {
-      const away = normalizeTeam(game.away), home = normalizeTeam(game.home);
-      const awayPlayers = USER_PLAYERS[away] || [];
-      const homePlayers = USER_PLAYERS[home] || [];
-      return (
-        <article class="rounded-2xl border border-slate-200 dark:border-slate-800 bg-white/70 dark:bg-slate-900/70 p-3 sm:p-4 shadow-sm">
-          <div class="flex items-center justify-between gap-2">
-            <div class="flex items-center gap-2 sm:gap-3">
-              <Helmet code={away} /><span class="text-sm sm:text-base" style={{color: TEAMS[away]?.primary}}>{TEAMS[away]?.name || game.away}</span>
-            </div>
-            <div class="font-bold">@</div>
-            <div class="flex items-center gap-2 sm:gap-3">
-              <span class="text-sm sm:text-base" style={{color: TEAMS[home]?.primary}}>{TEAMS[home]?.name || game.home}</span><Helmet code={home} />
-            </div>
-          </div>
-          <div class="text-xs text-slate-500 mt-1">{game.date||''} {game.time||''}</div>
-
-          <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 mt-3">
-            <div>
-              <h4 class="text-xs uppercase tracking-wider text-slate-500 mb-1">Tes joueurs – {TEAMS[away]?.name?.split(' ').slice(-1)[0] || game.away}</h4>
-              {awayPlayers.length ? (
-                <ul class="text-sm list-disc pl-5">
-                  {awayPlayers.map((p,i)=>(<li key={i}>{p}</li>))}
-                </ul>
-              ) : (
-                <div class="text-sm italic text-slate-400">Aucun joueur</div>
-              )}
-            </div>
-            <div>
-              <h4 class="text-xs uppercase tracking-wider text-slate-500 mb-1">Tes joueurs – {TEAMS[home]?.name?.split(' ').slice(-1)[0] || game.home}</h4>
-              {homePlayers.length ? (
-                <ul class="text-sm list-disc pl-5">
-                  {homePlayers.map((p,i)=>(<li key={i}>{p}</li>))}
-                </ul>
-              ) : (
-                <div class="text-sm italic text-slate-400">Aucun joueur</div>
-              )}
-            </div>
-          </div>
-        </article>
-      );
-    };
-
-    const App = () => {
-      const [state, setState] = useState(loadState());
-      const [week, setWeek] = useState(1);
-
-      useEffect(()=>{ saveState(state); }, [state]);
-
-      const weeks = Array.from({length:18}, (_,i)=>i+1);
-      const weekGames = useMemo(()=> state.games.filter(g=> Number(g.week)===Number(week) ), [state, week]);
-
-      useEffect(()=>{
-        const sel = document.getElementById('weekSelect');
-        if(sel && sel.options.length===0){
-          weeks.forEach(w=>{ const o=document.createElement('option'); o.value=String(w); o.textContent = 'Week '+w; sel.appendChild(o); });
-          sel.value = '1';
-          sel.addEventListener('change', e=> setWeek(Number(e.target.value)));
-        }
-      },[]);
-
-      useEffect(()=>{
-        const imp = document.getElementById('btnImport');
-        const exp = document.getElementById('btnExport');
-        if(imp && !imp._bound){ imp._bound=true; imp.addEventListener('click', ()=> doImport()); }
-        if(exp && !exp._bound){ exp._bound=true; exp.addEventListener('click', ()=> doExport(state)); }
-      },[state]);
-
-      return (
-        <div class="grid gap-4">
-          {weekGames.length? weekGames.map((g,i)=>(<MatchCard key={i} game={g} />)) : (
-            <div class="rounded-xl border border-dashed p-6 text-center text-sm text-slate-500">
-              Aucun match pour cette semaine. Importe un calendrier ou ajoute des matchs ci-dessous.
-            </div>
-          )}
-          <Editor onAdd={(g)=> setState(s=> ({...s, games:[...s.games, g]}))} />
-        </div>
-      );
-    };
-
-    const Editor = ({onAdd}) => {
-      const [week, setWeek] = useState(1);
-      const [date, setDate] = useState('');
-      const [time, setTime] = useState('');
-      const [away, setAway] = useState('');
-      const [home, setHome] = useState('');
-      const submit = () => {
-        const a = normalizeTeam(away) || away, h = normalizeTeam(home) || home;
-        onAdd({week:Number(week), date, time, away:a, home:h});
-        setDate(''); setTime(''); setAway(''); setHome('');
-      };
-      return (
-        <div class="mt-4 rounded-2xl bg-slate-100 dark:bg-slate-900/40 p-4 border border-slate-200 dark:border-slate-800">
-          <h3 class="font-semibold mb-2">Ajouter un match manuellement</h3>
-          <div class="grid sm:grid-cols-6 gap-2 items-end">
-            <label class="text-sm">Week
-              <select class="w-full rounded-lg px-2 py-2 bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-700" value={week} onChange={e=>setWeek(e.target.value)}>
-                {Array.from({length:18}, (_,i)=>i+1).map(w=> <option key={w} value={w}>Week {w}</option>)}
-              </select>
-            </label>
-            <label class="text-sm">Date
-              <input class="w-full rounded-lg px-2 py-2 bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-700" placeholder="2025-09-07" value={date} onChange={e=>setDate(e.target.value)} />
-            </label>
-            <label class="text-sm">Heure
-              <input class="w-full rounded-lg px-2 py-2 bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-700" placeholder="19:00" value={time} onChange={e=>setTime(e.target.value)} />
-            </label>
-            <label class="text-sm">Away
-              <input class="w-full rounded-lg px-2 py-2 bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-700" placeholder="Vikings / MIN" value={away} onChange={e=>setAway(e.target.value)} />
-            </label>
-            <label class="text-sm">Home
-              <input class="w-full rounded-lg px-2 py-2 bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-700" placeholder="Jets / NYJ" value={home} onChange={e=>setHome(e.target.value)} />
-            </label>
-            <button class="px-3 py-2 rounded-lg bg-slate-900 text-white dark:bg-white dark:text-black" onClick={submit}>Ajouter</button>
-          </div>
-        </div>
-      );
-    };
-
-    function doImport(){
-      const input = document.createElement('input');
-      input.type = 'file'; input.accept = 'application/json';
-      input.onchange = async () => {
-        const file = input.files[0]; if(!file) return;
-        const text = await file.text();
-        try{
-          const data = JSON.parse(text);
-          if(!Array.isArray(data)) throw new Error('JSON attendu: tableau d\'objets');
-          const games = data.map(g=> ({
-            week: Number(g.week)||1,
-            date: g.date||'',
-            time: g.time||'',
-            away: normalizeTeam(g.away)||g.away,
-            home: normalizeTeam(g.home)||g.home
-          }));
-          saveState({games});
-          location.reload();
-        }catch(e){ alert('Fichier invalide: '+e.message); }
-      };
-      input.click();
-    }
-
-    function doExport(state){
-      const blob = new Blob([JSON.stringify(state.games, null, 2)], {type:'application/json'});
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url; a.download = 'nfl_schedule.json'; a.click();
-      URL.revokeObjectURL(url);
-    }
-
-    const root = createRoot(document.getElementById('matches'));
-    root.render(<App />);
-  </script>
-</body>
+const Helmet = ({code, size=28}) => {
+const team = TEAMS[code] || {primary:'#666'};
 </html>
