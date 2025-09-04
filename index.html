@@ -1,100 +1,152 @@
 <!doctype html>
-const awayPlayers = (players[away] || []).map(p=>`<li>${p}</li>`).join('');
-const homePlayers = (players[home] || []).map(p=>`<li>${p}</li>`).join('');
+<html lang="fr">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>NFL Fantasy Tracker</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    .player {
+      color: #6b7280; /* gris Tailwind slate-500 */
+      font-size: 0.9em;
+      margin-left: 1.5rem;
+      display: block;
+    }
+  </style>
+</head>
+<body class="bg-slate-50 text-slate-900">
+  <main class="max-w-5xl mx-auto p-4">
+    <header class="mb-6 flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
+      <h1 class="text-2xl font-bold">🏈 NFL Fantasy Tracker</h1>
+      <label class="text-sm flex items-center gap-2">Week
+        <select id="weekSelect" class="border rounded px-2 py-1"></select>
+      </label>
+    </header>
+    <div id="matches" class="grid gap-4"></div>
+  </main>
 
+  <script>
+    // Couleurs officielles des équipes
+    const TEAMS = {
+      DAL: "#041E42", PHI: "#004C54", KC: "#E31837", LAC: "#0080C6",
+      TB: "#D50A0A", ATL: "#A71930", PIT: "#101820", NYJ: "#125740",
+      MIA: "#008E97", IND: "#002C5F", CAR: "#0085CA", JAC: "#101820",
+      NYG: "#0B2265", WAS: "#5A1414", ARI: "#97233F", NO: "#101820",
+      CIN: "#FB4F14", CLE: "#311D00", LV: "#000000", NE: "#002244",
+      SF: "#AA0000", SEA: "#002244", TEN: "#0C2340", DEN: "#FB4F14",
+      DET: "#0076B6", GB: "#203731", HOU: "#03202F", LAR: "#003594",
+      BAL: "#241773", BUF: "#00338D", MIN: "#4F2683", CHI: "#0B162A"
+    };
 
-const el = document.createElement('article');
-el.className = 'rounded-2xl border border-slate-200 dark:border-slate-800 bg-white/70 dark:bg-slate-900/70 p-3 sm:p-4 shadow-sm';
-el.innerHTML = `
-<div class="flex items-center justify-between gap-2">
-<div class="flex items-center gap-2 sm:gap-3">
-${helmetSVG(awayMeta.primary)}
-<span style="color:${awayMeta.primary}">${awayMeta.name}</span>
-</div>
-<div class="font-bold">@</div>
-<div class="flex items-center gap-2 sm:gap-3">
-<span style="color:${homeMeta.primary}">${homeMeta.name}</span>
-${helmetSVG(homeMeta.primary)}
-</div>
-</div>
-<div class="grid grid-cols-1 sm:grid-cols-2 gap-3 mt-3">
-<div>
-<h4 class="text-xs uppercase tracking-wider text-slate-500 mb-1">Tes joueurs – ${away}</h4>
-${awayPlayers ? `<ul class="text-sm list-disc pl-5">${awayPlayers}</ul>` : `<div class="text-sm italic text-slate-400">Aucun joueur</div>`}
-</div>
-<div>
-<h4 class="text-xs uppercase tracking-wider text-slate-500 mb-1">Tes joueurs – ${home}</h4>
-${homePlayers ? `<ul class="text-sm list-disc pl-5">${homePlayers}</ul>` : `<div class="text-sm italic text-slate-400">Aucun joueur</div>`}
-</div>
-</div>
-`;
-return el;
-}
+    // Matchs des deux premières semaines
+    const SCHEDULE = [
+      // Week 1
+      { week: 1, away: "DAL", home: "PHI" },
+      { week: 1, away: "KC", home: "LAC" },
+      { week: 1, away: "TB", home: "ATL" },
+      { week: 1, away: "PIT", home: "NYJ" },
+      { week: 1, away: "MIA", home: "IND" },
+      { week: 1, away: "CAR", home: "JAC" },
+      { week: 1, away: "NYG", home: "WAS" },
+      { week: 1, away: "ARI", home: "NO" },
+      { week: 1, away: "CIN", home: "CLE" },
+      { week: 1, away: "LV", home: "NE" },
+      { week: 1, away: "SF", home: "SEA" },
+      { week: 1, away: "TEN", home: "DEN" },
+      { week: 1, away: "DET", home: "GB" },
+      { week: 1, away: "HOU", home: "LAR" },
+      { week: 1, away: "BAL", home: "BUF" },
+      { week: 1, away: "MIN", home: "CHI" },
+      // Week 2
+      { week: 2, away: "WAS", home: "GB" },
+      { week: 2, away: "LAR", home: "TEN" },
+      { week: 2, away: "SEA", home: "PIT" },
+      { week: 2, away: "BUF", home: "NYJ" },
+      { week: 2, away: "CHI", home: "DET" },
+      { week: 2, away: "NYG", home: "DAL" },
+      { week: 2, away: "CLE", home: "BAL" },
+      { week: 2, away: "SF", home: "NO" },
+      { week: 2, away: "JAC", home: "CIN" },
+      { week: 2, away: "CAR", home: "ARI" },
+      { week: 2, away: "DEN", home: "IND" },
+      { week: 2, away: "PHI", home: "KC" },
+      { week: 2, away: "ATL", home: "MIN" },
+      { week: 2, away: "TB", home: "HOU" },
+      { week: 2, away: "LAC", home: "LV" }
+    ];
 
+    // Joueurs fantasy par équipe
+    const PLAYERS = {
+      WAS: ["Jayden Daniels", "DEFENSE", "Zach Ertz"],
+      NYJ: ["Breece Hall", "Allen Lazard"],
+      CHI: ["D'Andre Swift"],
+      DET: ["Amon-Ra St Brown", "DEFENSE", "Jake Bates"],
+      DEN: ["Courtland Sutton", "Audric Estime"],
+      KC: ["Travis Kelce", "Xavier Worthy"],
+      CLE: ["David Njoku", "Jerry Jeudy"],
+      BUF: ["Khalil Shakir", "Keon Coleman", "Dalton Kincaid"],
+      LAC: ["Cameron Dicker", "Kimani Vidal"],
+      MIN: ["JJ McCarthy", "Adam Thielen", "Aaron Jones"],
+      ATL: ["Tyler Allgeier", "Michael Penix"],
+      TB: ["Rachaad White", "Chris Godwin"],
+      BAL: ["Lamar Jackson", "Mark Andrews", "Rashod Bateman"],
+      NO: ["Alvin Kamara"],
+      NYG: ["Tyrone Tracy", "Cam Skattebo", "Jaxson Dart", "Jameis Winston"],
+      HOU: ["Nico Collins"],
+      SEA: ["Jaxon Smith-Njigba", "Cooper Kupp"],
+      CAR: ["Xavier Legette", "Bryce Young", "Tetaoira McMillan"],
+      LV: ["Dont'e Thornton", "Ashton Jeanty", "Amari Cooper"],
+      ARI: ["Kyler Murray", "Trey McBride"],
+      PIT: ["DK Metcalf"],
+      TEN: ["Tony Pollard"],
+      NE: ["Rhamondre Stevenson"],
+      CIN: ["Joe Burrow"],
+      JAC: ["Brian Thomas"]
+    };
 
-function renderWeek(week, schedule, players){
-$matches.innerHTML = '';
-const games = schedule.filter(g => Number(g.week) === Number(week));
-if(!games.length){
-$matches.innerHTML = `<div class="text-sm text-slate-500">Aucun match pour la Week ${week}.</div>`;
-return;
-}
-games.forEach(g => $matches.appendChild(renderMatch(g, players)) );
-}
+    const weekSelect = document.getElementById("weekSelect");
+    const matchesDiv = document.getElementById("matches");
 
+    // Remplir le menu déroulant
+    const weeks = [...new Set(SCHEDULE.map(g => g.week))];
+    weeks.forEach(w => {
+      const opt = document.createElement("option");
+      opt.value = w;
+      opt.textContent = "Week " + w;
+      weekSelect.appendChild(opt);
+    });
 
-async function loadJSON(path){
-try{
-const res = await fetch(path, {cache:'no-store'});
-if(!res.ok) throw new Error(`${path} → HTTP ${res.status}`);
-return await res.json();
-}catch(err){
-console.error('Erreur JSON', path, err);
-$status.textContent = `Erreur de chargement de ${path} : ${err.message}`;
-return null;
-}
-}
+    function renderWeek(week) {
+      matchesDiv.innerHTML = "";
+      const games = SCHEDULE.filter(g => g.week == week);
+      games.forEach(g => {
+        const awayPlayers = PLAYERS[g.away] || [];
+        const homePlayers = PLAYERS[g.home] || [];
+        const div = document.createElement("div");
+        div.className = "border rounded-xl p-3 bg-white shadow";
 
+        div.innerHTML = `
+          <div class="flex justify-between font-bold">
+            <span style="color:${TEAMS[g.away]}">${g.away}</span>
+            <span>@</span>
+            <span style="color:${TEAMS[g.home]}">${g.home}</span>
+          </div>
+          <div class="grid grid-cols-2 gap-2 mt-2">
+            <div>${awayPlayers.map(p => `<span class="player">${p}</span>`).join("")}</div>
+            <div>${homePlayers.map(p => `<span class="player">${p}</span>`).join("")}</div>
+          </div>
+        `;
+        matchesDiv.appendChild(div);
+      });
+    }
 
-(async function init(){
-$status.textContent = 'Chargement des données…';
-const [schedule, players] = await Promise.all([
-loadJSON('schedule.json'),
-loadJSON('players.json')
-]);
-if(!schedule || !players){
-$status.textContent = 'Impossible de charger les données. Vérifie schedule.json et players.json.';
-return;
-}
+    // Initial render
+    weekSelect.value = weeks[0];
+    renderWeek(weeks[0]);
 
-
-// Renseigner le select des Weeks
-const weeks = Array.from(new Set(schedule.map(g => Number(g.week)).filter(n => !isNaN(n)))).sort((a,b)=>a-b);
-$weekSelect.innerHTML = '';
-if(!weeks.length){
-$status.textContent = 'Aucune semaine trouvée dans schedule.json.';
-return;
-}
-weeks.forEach(w => {
-const o = document.createElement('option');
-o.value = String(w);
-o.textContent = 'Week ' + w;
-$weekSelect.appendChild(o);
-});
-
-
-// Par défaut : première semaine
-$weekSelect.value = String(weeks[0]);
-renderWeek(weeks[0], schedule, players);
-
-
-$weekSelect.addEventListener('change', (e)=>{
-renderWeek(e.target.value, schedule, players);
-});
-
-
-$status.textContent = '';
-})();
-</script>
+    weekSelect.addEventListener("change", e => {
+      renderWeek(e.target.value);
+    });
+  </script>
 </body>
 </html>
