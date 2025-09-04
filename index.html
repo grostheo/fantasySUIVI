@@ -1,83 +1,100 @@
 <!doctype html>
-<html lang="fr">
-<head>
-<meta charset="utf-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1" />
-<title>NFL Fantasy Tracker</title>
-<script src="https://cdn.tailwindcss.com"></script>
-<meta name="description" content="Suivre les matchs NFL par semaine et surligner ceux où tu as des joueurs de fantasy." />
-<meta name="theme-color" content="#0f172a" />
-<style>
-:root { color-scheme: light dark; }
-.scrollbar-thin { scrollbar-width: thin; }
-</style>
-<script type="importmap">
-{"imports": {"react": "https://esm.sh/react@18","react-dom/client": "https://esm.sh/react-dom@18/client"}}
-</script>
-</head>
-<body class="bg-slate-50 text-slate-900 dark:bg-slate-950 dark:text-slate-100">
-<main class="max-w-6xl mx-auto p-4 sm:p-6">
-<header class="mb-6 flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
+const awayPlayers = (players[away] || []).map(p=>`<li>${p}</li>`).join('');
+const homePlayers = (players[home] || []).map(p=>`<li>${p}</li>`).join('');
+
+
+const el = document.createElement('article');
+el.className = 'rounded-2xl border border-slate-200 dark:border-slate-800 bg-white/70 dark:bg-slate-900/70 p-3 sm:p-4 shadow-sm';
+el.innerHTML = `
+<div class="flex items-center justify-between gap-2">
+<div class="flex items-center gap-2 sm:gap-3">
+${helmetSVG(awayMeta.primary)}
+<span style="color:${awayMeta.primary}">${awayMeta.name}</span>
+</div>
+<div class="font-bold">@</div>
+<div class="flex items-center gap-2 sm:gap-3">
+<span style="color:${homeMeta.primary}">${homeMeta.name}</span>
+${helmetSVG(homeMeta.primary)}
+</div>
+</div>
+<div class="grid grid-cols-1 sm:grid-cols-2 gap-3 mt-3">
 <div>
-<h1 class="text-2xl sm:text-3xl font-bold tracking-tight">🏈 NFL Fantasy Tracker</h1>
-<p class="text-sm sm:text-base text-slate-600 dark:text-slate-300 mt-1">Sélectionne une semaine, vois tous les matchs et, sous chaque équipe, tes joueurs à suivre.</p>
+<h4 class="text-xs uppercase tracking-wider text-slate-500 mb-1">Tes joueurs – ${away}</h4>
+${awayPlayers ? `<ul class="text-sm list-disc pl-5">${awayPlayers}</ul>` : `<div class="text-sm italic text-slate-400">Aucun joueur</div>`}
 </div>
-<div class="flex gap-2 flex-wrap">
-<label class="text-sm flex items-center gap-2">Week
-<select id="weekSelect" class="bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-700 rounded-lg px-3 py-2 text-sm"></select>
-</label>
+<div>
+<h4 class="text-xs uppercase tracking-wider text-slate-500 mb-1">Tes joueurs – ${home}</h4>
+${homePlayers ? `<ul class="text-sm list-disc pl-5">${homePlayers}</ul>` : `<div class="text-sm italic text-slate-400">Aucun joueur</div>`}
 </div>
-</header>
+</div>
+`;
+return el;
+}
 
 
-<div id="matches" class="grid gap-4"></div>
+function renderWeek(week, schedule, players){
+$matches.innerHTML = '';
+const games = schedule.filter(g => Number(g.week) === Number(week));
+if(!games.length){
+$matches.innerHTML = `<div class="text-sm text-slate-500">Aucun match pour la Week ${week}.</div>`;
+return;
+}
+games.forEach(g => $matches.appendChild(renderMatch(g, players)) );
+}
 
 
-<footer class="mt-10 text-xs text-slate-500">Fichier unique prêt pour GitHub Pages. Les données sont chargées depuis <code>schedule.json</code> et <code>players.json</code>.</footer>
-</main>
+async function loadJSON(path){
+try{
+const res = await fetch(path, {cache:'no-store'});
+if(!res.ok) throw new Error(`${path} → HTTP ${res.status}`);
+return await res.json();
+}catch(err){
+console.error('Erreur JSON', path, err);
+$status.textContent = `Erreur de chargement de ${path} : ${err.message}`;
+return null;
+}
+}
 
 
-<script type="module">
-import React, { useEffect, useMemo, useState } from 'react';
-import { createRoot } from 'react-dom/client';
+(async function init(){
+$status.textContent = 'Chargement des données…';
+const [schedule, players] = await Promise.all([
+loadJSON('schedule.json'),
+loadJSON('players.json')
+]);
+if(!schedule || !players){
+$status.textContent = 'Impossible de charger les données. Vérifie schedule.json et players.json.';
+return;
+}
 
 
-const TEAMS = {
-ARI: {name:'Arizona Cardinals', primary:'#97233F'},
-ATL: {name:'Atlanta Falcons', primary:'#A71930'},
-BAL: {name:'Baltimore Ravens', primary:'#241773'},
-BUF: {name:'Buffalo Bills', primary:'#00338D'},
-CAR: {name:'Carolina Panthers', primary:'#0085CA'},
-CHI: {name:'Chicago Bears', primary:'#0B162A'},
-CIN: {name:'Cincinnati Bengals', primary:'#FB4F14'},
-CLE: {name:'Cleveland Browns', primary:'#311D00'},
-DAL: {name:'Dallas Cowboys', primary:'#041E42'},
-DEN: {name:'Denver Broncos', primary:'#FB4F14'},
-DET: {name:'Detroit Lions', primary:'#0076B6'},
-GB: {name:'Green Bay Packers', primary:'#203731'},
-HOU: {name:'Houston Texans', primary:'#03202F'},
-IND: {name:'Indianapolis Colts', primary:'#002C5F'},
-JAX: {name:'Jacksonville Jaguars', primary:'#101820'},
-KC: {name:'Kansas City Chiefs', primary:'#E31837'},
-LV: {name:'Las Vegas Raiders', primary:'#000000'},
-LAC: {name:'Los Angeles Chargers', primary:'#0080C6'},
-LAR: {name:'Los Angeles Rams', primary:'#003594'},
-MIA: {name:'Miami Dolphins', primary:'#008E97'},
-MIN: {name:'Minnesota Vikings', primary:'#4F2683'},
-NE: {name:'New England Patriots', primary:'#002244'},
-NO: {name:'New Orleans Saints', primary:'#101820'},
-NYG: {name:'New York Giants', primary:'#0B2265'},
-NYJ: {name:'New York Jets', primary:'#125740'},
-PHI: {name:'Philadelphia Eagles', primary:'#004C54'},
-PIT: {name:'Pittsburgh Steelers', primary:'#101820'},
-SF: {name:'San Francisco 49ers', primary:'#AA0000'},
-SEA: {name:'Seattle Seahawks', primary:'#002244'},
-TB: {name:'Tampa Bay Buccaneers', primary:'#D50A0A'},
-TEN: {name:'Tennessee Titans', primary:'#0C2340'},
-WAS: {name:'Washington Commanders', primary:'#5A1414'}
-};
+// Renseigner le select des Weeks
+const weeks = Array.from(new Set(schedule.map(g => Number(g.week)).filter(n => !isNaN(n)))).sort((a,b)=>a-b);
+$weekSelect.innerHTML = '';
+if(!weeks.length){
+$status.textContent = 'Aucune semaine trouvée dans schedule.json.';
+return;
+}
+weeks.forEach(w => {
+const o = document.createElement('option');
+o.value = String(w);
+o.textContent = 'Week ' + w;
+$weekSelect.appendChild(o);
+});
 
 
-const Helmet = ({code, size=28}) => {
-const team = TEAMS[code] || {primary:'#666'};
+// Par défaut : première semaine
+$weekSelect.value = String(weeks[0]);
+renderWeek(weeks[0], schedule, players);
+
+
+$weekSelect.addEventListener('change', (e)=>{
+renderWeek(e.target.value, schedule, players);
+});
+
+
+$status.textContent = '';
+})();
+</script>
+</body>
 </html>
