@@ -7,10 +7,17 @@
   <script src="https://cdn.tailwindcss.com"></script>
   <style>
     .player {
-      color: #6b7280; /* gris Tailwind slate-500 */
       font-size: 0.9em;
       margin-left: 1.5rem;
       display: block;
+    }
+    .me { color: #16a34a; } /* vert */
+    .friend { color: #7e22ce; } /* violet */
+    .both {
+      background: linear-gradient(90deg, red, orange, yellow, green, blue, indigo, violet);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      font-weight: bold;
     }
   </style>
 </head>
@@ -38,45 +45,311 @@
       BAL: "#241773", BUF: "#00338D", MIN: "#4F2683", CHI: "#0B162A"
     };
 
-    // Matchs des deux premières semaines
-    const SCHEDULE = [
-      // Week 1
-      { week: 1, away: "DAL", home: "PHI" },
-      { week: 1, away: "KC", home: "LAC" },
-      { week: 1, away: "TB", home: "ATL" },
-      { week: 1, away: "PIT", home: "NYJ" },
-      { week: 1, away: "MIA", home: "IND" },
-      { week: 1, away: "CAR", home: "JAC" },
-      { week: 1, away: "NYG", home: "WAS" },
-      { week: 1, away: "ARI", home: "NO" },
-      { week: 1, away: "CIN", home: "CLE" },
-      { week: 1, away: "LV", home: "NE" },
-      { week: 1, away: "SF", home: "SEA" },
-      { week: 1, away: "TEN", home: "DEN" },
-      { week: 1, away: "DET", home: "GB" },
-      { week: 1, away: "HOU", home: "LAR" },
-      { week: 1, away: "BAL", home: "BUF" },
-      { week: 1, away: "MIN", home: "CHI" },
-      // Week 2
-      { week: 2, away: "WAS", home: "GB" },
-      { week: 2, away: "LAR", home: "TEN" },
-      { week: 2, away: "SEA", home: "PIT" },
-      { week: 2, away: "BUF", home: "NYJ" },
-      { week: 2, away: "CHI", home: "DET" },
-      { week: 2, away: "NYG", home: "DAL" },
-      { week: 2, away: "CLE", home: "BAL" },
-      { week: 2, away: "SF", home: "NO" },
-      { week: 2, away: "JAC", home: "CIN" },
-      { week: 2, away: "CAR", home: "ARI" },
-      { week: 2, away: "DEN", home: "IND" },
-      { week: 2, away: "PHI", home: "KC" },
-      { week: 2, away: "ATL", home: "MIN" },
-      { week: 2, away: "TB", home: "HOU" },
-      { week: 2, away: "LAC", home: "LV" }
-    ];
+    // --- MATCHS DES 18 WEEKS ---
+    const RAW_SCHEDULE = `
+DAL@PHI
+KC@LAC
+TB@ATL
+PIT@NYJ
+MIA@IND
+CAR@JAC
+NYG@WAS
+ARI@NO
+CIN@CLE
+LV@NE
+SF@SEA
+TEN@DEN
+DET@GB
+HOU@LAR
+BAL@BUF
+MIN@CHI
 
-    // Joueurs fantasy par équipe
-    const PLAYERS = {
+WAS@GB
+LAR@TEN
+SEA@PIT
+BUF@NYJ
+CHI@DET
+NYG@DAL
+CLE@BAL
+SF@NO
+JAC@CIN
+CAR@ARI
+DEN@IND
+PHI@KC
+ATL@MIN
+TB@HOU
+LAC@LV
+
+MIA@BUF
+IND@TEN
+PIT@NE
+NYJ@TB
+LV@WAS
+LAR@PHI
+ATL@CAR
+CIN@MIN
+HOU@JAC
+GB@CLE
+DEN@LAC
+NO@SEA
+ARI@SF
+DAL@CHI
+KC@NYG
+DET@BAL
+
+SEA@ARI
+MIN@PIT
+NO@BUF
+TEN@HOU
+CLE@DET
+WAS@ATL
+PHI@TB
+CAR@NE
+LAC@NYG
+JAC@SF
+IND@LAR
+CHI@LV
+BAL@KC
+GB@DAL
+NYJ@MIA
+CIN@DEN
+
+SF@LA
+MIN@CLE
+DAL@NYJ
+DEN@PHI
+HOU@BAL
+NYG@NO
+LV@IND
+MIA@CAR
+TB@SEA
+TEN@ARI
+WAS@LAC
+DET@CIN
+NE@BUF
+KC@JAC
+
+PHI@NYG
+DEN@NYJ
+ARI@IND
+LAR@BAL
+CLE@PIT
+SF@TB
+SEA@JAC
+LAC@MIA
+DAL@CAR
+TEN@LV
+NE@NO
+CIN@GB
+DET@KC
+BUF@ATL
+CHI@WAS
+
+PIT@CIN
+LAR@JAC
+NE@TEN
+NO@CHI
+MIA@CLE
+CAR@NYJ
+PHI@MIN
+LV@KC
+NYG@DEN
+IND@LAC
+WAS@DAL
+GB@ARI
+ATL@SF
+TB@DET
+HOU@SEA
+
+MIN@LAC
+NYJ@CIN
+BUF@CAR
+SF@HOU
+NYG@PHI
+CLE@NE
+CHI@BAL
+MIA@ATL
+TB@NO
+DAL@DEN
+TEN@IND
+GB@PIT
+WAS@KC
+
+BAL@MIA
+DEN@HOU
+SF@NYG
+IND@PIT
+CAR@GB
+MIN@DET
+LAC@TEN
+ATL@NE
+CHI@CIN
+JAC@LV
+NO@LAR
+KC@BUF
+SEA@WAS
+ARI@DAL
+
+LV@DEN
+ATL@IND
+BAL@MIN
+NE@TB
+JAC@HOU
+CLE@NYJ
+NO@CAR
+NYG@CHI
+BUF@MIA
+ARI@SEA
+LAR@SF
+DET@WAS
+PIT@LAC
+PHI@GB
+
+NYJ@NE
+WAS@MIA
+LAC@JAC
+TB@BUF
+CHI@MIN
+GB@NYG
+HOU@TEN
+CAR@ATL
+SF@ARI
+SEA@LAR
+KC@DEN
+BAL@CLE
+DET@PHI
+DAL@LV
+
+BUF@HOU
+MIN@GB
+IND@KC
+NE@CIN
+PIT@CHI
+NYJ@BAL
+NYG@DET
+SEA@TEN
+JAC@ARI
+CLE@LV
+PHI@DAL
+ATL@NO
+TB@LAR
+CAR@SF
+
+GB@DET
+KC@DAL
+CIN@BAL
+CHI@PHI
+JAC@TEN
+ATL@NYJ
+LAR@CAR
+NO@MIA
+ARI@TB
+SF@CLE
+HOU@IND
+MIN@SEA
+BUF@PIT
+LV@LAC
+DEN@WAS
+NYG@NE
+
+DAL@DET
+PIT@BAL
+SEA@ATL
+TEN@CLE
+MIA@NYJ
+NO@TB
+IND@JAC
+CHI@GB
+WAS@MIN
+DEN@LV
+CIN@BUF
+LAR@ARI
+HOU@KC
+PHI@LAC
+
+ATL@TB
+WAS@NYG
+LV@PHI
+CLE@CHI
+BAL@CIN
+ARI@HOU
+BUF@NE
+NYJ@JAC
+LAC@KC
+IND@SEA
+TEN@SF
+GB@DEN
+CAR@NO
+DET@LAR
+MIN@DAL
+MIA@PIT
+
+LAR@EA
+GB@CHI
+PHI@WAS
+BUF@CLE
+LAC@DAL
+NE@BAL
+NYJ@NO
+TB@CAR
+MIN@NYG
+KC@TEN
+JAC@DEN
+ATL@ARI
+LV@HOU
+PIT@DET
+CIN@MIA
+SF@IND
+
+DAL@WAS
+DET@MIN
+DEN@KC
+TB@MIA
+NE@NYJ
+HOU@LAC
+NYG@LV
+PIT@CLE
+ARI@CIN
+NO@TEN
+BAL@GB
+JAC@IND
+SEA@CAR
+PHI@BUF
+CHI@SF
+LAR@ATL
+
+GB@MIN
+MIA@NE
+TEN@JAC
+CAR@TB
+ARI@LAR
+DET@CHI
+IND@HOU
+WAS@PHI
+DAL@NYG
+CLE@CIN
+NO@ATL
+BAL@PIT
+NYJ@BUF
+KC@LV
+LAC@DEN
+SEA@SF
+    `;
+
+    // Transformer RAW_SCHEDULE en tableau exploitable
+    const SCHEDULE = [];
+    RAW_SCHEDULE.trim().split("\n\n").forEach((weekBlock, i) => {
+      const week = i + 1;
+      weekBlock.trim().split("\n").forEach(line => {
+        if (line.includes("@")) {
+          const [away, home] = line.split("@");
+          SCHEDULE.push({ week, away: away.trim(), home: home.trim() });
+        }
+      });
+    });
+
+    // Tes joueurs
+    const PLAYERS_ME = {
       WAS: ["Jayden Daniels", "DEFENSE", "Zach Ertz"],
       NYJ: ["Breece Hall", "Allen Lazard"],
       CHI: ["D'Andre Swift"],
@@ -104,10 +377,39 @@
       JAC: ["Brian Thomas"]
     };
 
+    // Ses joueurs
+    const PLAYERS_FRIEND = {
+      TB: ["Baker Mayfield"],
+      MIA: ["Devon Achane", "Ollie Gordon"],
+      NE: ["Treveyon Henderson"],
+      NYG: ["Malik Nabers", "Theo Johnson"],
+      MIN: ["Justin Jefferson", "Will Reichard", "Jordan Addison"],
+      GB: ["DEFENSE", "Josh Jacobs", "Matthew Golden"],
+      BUF: ["Dalton Kincaid", "Josh Allen", "DEFENSE"],
+      WAS: ["Austin Ekeler", "Jacory Croskey-Merritt"],
+      CAR: ["Tetaoira McMillan", "Bryce Young", "Trevor Etienne"],
+      JAC: ["Travis Hunter", "Brendon Strange", "Bhayshul Tuten", "Tank Bigsby"],
+      DEN: ["Marvin Mims"],
+      LAC: ["Omarion Hampton", "Justin Herbert", "Tre Harris"],
+      IND: ["Jonathan Taylor", "Tyler Warren"],
+      DAL: ["CeeDee Lamb", "Jaydon Blue", "Javonte Williams", "Dak Prescott"],
+      PHI: ["Devonta Smith"],
+      CLE: ["David Njoku", "Shedeur Sanders"],
+      NO: ["Chris Olave", "Devin Neal"],
+      TEN: ["Calvin Ridley"],
+      DET: ["Jahmyr Gibbs"],
+      LV: ["Ashton Jeanty"],
+      ARI: ["Marvin Harrison"],
+      CIN: ["Tee Higgins"],
+      CHI: ["D'Andre Swift"],
+      PIT: ["Aaron Rodgers"],
+      LAR: ["Jarquez Hunter"]
+    };
+
     const weekSelect = document.getElementById("weekSelect");
     const matchesDiv = document.getElementById("matches");
 
-    // Remplir le menu déroulant
+    // Remplir menu des weeks
     const weeks = [...new Set(SCHEDULE.map(g => g.week))];
     weeks.forEach(w => {
       const opt = document.createElement("option");
@@ -116,15 +418,27 @@
       weekSelect.appendChild(opt);
     });
 
+    function renderPlayers(team) {
+      const me = PLAYERS_ME[team] || [];
+      const fr = PLAYERS_FRIEND[team] || [];
+      const all = new Set([...me, ...fr]);
+      return [...all].map(p => {
+        const mine = me.includes(p);
+        const his = fr.includes(p);
+        let cls = "player ";
+        if (mine && his) cls += "both";
+        else if (mine) cls += "me";
+        else if (his) cls += "friend";
+        return `<span class="${cls}">${p}</span>`;
+      }).join("");
+    }
+
     function renderWeek(week) {
       matchesDiv.innerHTML = "";
       const games = SCHEDULE.filter(g => g.week == week);
       games.forEach(g => {
-        const awayPlayers = PLAYERS[g.away] || [];
-        const homePlayers = PLAYERS[g.home] || [];
         const div = document.createElement("div");
         div.className = "border rounded-xl p-3 bg-white shadow";
-
         div.innerHTML = `
           <div class="flex justify-between font-bold">
             <span style="color:${TEAMS[g.away]}">${g.away}</span>
@@ -132,21 +446,18 @@
             <span style="color:${TEAMS[g.home]}">${g.home}</span>
           </div>
           <div class="grid grid-cols-2 gap-2 mt-2">
-            <div>${awayPlayers.map(p => `<span class="player">${p}</span>`).join("")}</div>
-            <div>${homePlayers.map(p => `<span class="player">${p}</span>`).join("")}</div>
+            <div>${renderPlayers(g.away)}</div>
+            <div>${renderPlayers(g.home)}</div>
           </div>
         `;
         matchesDiv.appendChild(div);
       });
     }
 
-    // Initial render
     weekSelect.value = weeks[0];
     renderWeek(weeks[0]);
-
-    weekSelect.addEventListener("change", e => {
-      renderWeek(e.target.value);
-    });
+    weekSelect.addEventListener("change", e => renderWeek(e.target.value));
   </script>
 </body>
 </html>
+
